@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Usar Docker para ejecutar los comandos
+                    docker.image('alpine:latest').inside("--user root") {
+                        sh 'apk add --no-cache git'  // Instalar Git en el contenedor Alpine como root
+                        sh 'echo "Hello World"'
+                        sh 'rm -rf unir-helloworld'  // Elimina cualquier repositorio existente
+                        sh 'git clone -b dev https://github.com/Keji-dev/unir-helloworld.git'  // Clona la rama dev
+                        sh 'ls -la unir-helloworld'
+                        sh 'echo "Working directory: $WORKSPACE"'
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    docker.image('alpine:latest').inside("--user root") {
+                        sh 'echo "Build step completed"'
+                    }
+                }
+            }
+        }
+    }
+}
