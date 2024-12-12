@@ -20,7 +20,15 @@ pipeline {
                 stage('Unit') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
+                            sh '''
+                                docker run -d -p 4500:4500 --name python-unit \
+                                -v $(pwd)/test/unit/:/home/unit/ \
+                                -v $(pwd)/:/workspace/ \
+                                python:3.9.21-slim \
+                                bash -c "export PYTHONPATH=/workspace:$PYTHONPATH && pip install pytest && pytest /home/unit --junitxml=/workspace/result-unit.xml"
+                                docker wait python-unit
+                                docker logs python-unit
+                            '''
                         }
                     }
                 }
@@ -39,8 +47,8 @@ pipeline {
                                 done
 
                                 echo "[OK] WireMock está listo"
-                                '''
-                        }    
+                            '''
+                        }
                     }
                 }
                 
@@ -48,8 +56,10 @@ pipeline {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
-                                export FLASK_APP=app/api.py
-                                nohup flask run &
+                                docker run -d -p 5000:5000 --name flask \
+                                -v $(pwd)/app:/workspace \
+                                python:3.9.21-slim \
+                                /bin/bash -c "cd /workspace && export FLASK_APP=api.py && export PYTHONPATH=/workspace:$PYTHONPATH && pip install flask pytest && flask run --host=0.0.0.0 --port=5000"
 
                                 until curl -s http://localhost:5000; do
                                     echo "[INFO] Esperando que Flask se inicie..."
@@ -57,13 +67,14 @@ pipeline {
                                 done
                                 echo "[OK] Flask está listo"
 
-                                export PYTHONPATH=$WORKSPACE
-                                pytest test/rest/api_test.py --junitxml=result-rest.xml
+                                docker exec flask bash -c "export PYTHONPATH=/workspace:$PYTHONPATH && pytest /workspace --junitxml=/workspace/result-rest.xml"
+                                
+                                docker logs flask
                             '''
                         }
                     }
                 }
-            }    
+            }
         }
         
         stage('Results') {
@@ -79,6 +90,10 @@ pipeline {
             echo "[INFO] Cerrando contenedor WireMock..."
             sh 'docker stop wiremock || true'
             sh 'docker rm wiremock || true'
+            sh 'docker stop python-unit || true'
+            sh 'docker rm python-unit || true'
+            sh 'docker stop flask || true'
+            sh 'docker rm flask || true'
         }
     }
 }

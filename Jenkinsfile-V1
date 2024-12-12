@@ -20,7 +20,15 @@ pipeline {
                 stage('Unit') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
+                            sh '''
+                                docker run -d -p 4500:4500 --name python-unit \
+                                -v $(pwd)/test/unit/:/home/unit/ \
+                                -v $(pwd)/:/workspace/ \
+                                python:3.9.21-slim \
+                                bash -c "export PYTHONPATH=/workspace:$PYTHONPATH && pip install pytest && pytest /home/unit --junitxml=/workspace/result-unit.xml"
+                                docker wait python-unit
+                                docker logs python-unit
+                            '''
                         }
                     }
                 }
@@ -39,8 +47,8 @@ pipeline {
                                 done
 
                                 echo "[OK] WireMock está listo"
-                                '''
-                        }    
+                            '''
+                        }
                     }
                 }
                 
@@ -63,7 +71,7 @@ pipeline {
                         }
                     }
                 }
-            }    
+            }
         }
         
         stage('Results') {
@@ -79,6 +87,8 @@ pipeline {
             echo "[INFO] Cerrando contenedor WireMock..."
             sh 'docker stop wiremock || true'
             sh 'docker rm wiremock || true'
+            sh 'docker stop python-unit || true'
+            sh 'docker rm python-unit || true'
         }
     }
 }
