@@ -64,6 +64,7 @@ pipeline {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
+                                curl http://localhost:5000
                                 export PYTHONPATH=$WORKSPACE
                                 pytest test/rest/api_test.py --junitxml=result-rest.xml
                             '''
