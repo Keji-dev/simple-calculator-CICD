@@ -20,12 +20,7 @@ pipeline {
                 stage('Unit') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                sudo apt update
-                                sudo apt install -y python3 python3-pip python3-venv
-                                sudo pip install flask pytest
-                                export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
-                            '''
+                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
                         }
                     }
                 }
@@ -44,7 +39,7 @@ pipeline {
                                 done
 
                                 echo "[OK] WireMock está listo"
-                            '''
+                                '''
                         }    
                     }
                 }
