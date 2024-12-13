@@ -35,26 +35,26 @@ pipeline {
                     }
                 }
 
-                stage('Flask Server') {
-                    agent { label 'flask' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                export FLASK_APP=app/api.py
-                                flask run --host=0.0.0.0 --port=5000 &
+                // stage('Flask Server') {
+                //     agent { label 'flask' }
+                //     steps {
+                //         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                //             sh '''
+                //                 export FLASK_APP=app/api.py
+                //                 flask run --host=0.0.0.0 --port=5000 &
 
-                                echo "[INFO] Esperando que Flask se inicie..."
-                                while ! curl -s http://localhost:5000; do
-                                    sleep 2
-                                done
-                                echo "[OK] Flask está listo"
+                //                 echo "[INFO] Esperando que Flask se inicie..."
+                //                 while ! curl -s http://localhost:5000; do
+                //                     sleep 2
+                //                 done
+                //                 echo "[OK] Flask está listo"
 
-                                whoami
-                                hostname
-                            '''    
-                        }
-                    }
-                }
+                //                 whoami
+                //                 hostname
+                //             '''    
+                //         }
+                //     }
+                // }
             }
         }
 
@@ -65,7 +65,16 @@ pipeline {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
-                                curl http://localhost:5000
+                                export FLASK_APP=app/api.py
+                                flask run --host=0.0.0.0 --port=5000 &
+
+                                echo "[INFO] Esperando que Flask se inicie..."
+                                    while ! curl -s http://localhost:5000; do
+                                    sleep 2
+                                done
+
+                                echo "[OK] Flask está listo"
+                                
                                 export PYTHONPATH=$WORKSPACE
                                 pytest test/rest/api_test.py --junitxml=result-rest.xml
                             '''
