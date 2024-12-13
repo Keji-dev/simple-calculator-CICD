@@ -71,17 +71,17 @@ pipeline {
                         }
                     }
                 }
-                stage('Rest') {
-                    agent { label 'flask' }  // Usamos el agente flask para las pruebas REST
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash 'flask_data'  // Recuperamos los datos del Flask stashado
-                            echo "[INFO] Ejecutando pruebas REST..."
-                            export PYTHONPATH=$WORKSPACE
-                            pytest test/rest/api_test.py --junitxml=result-rest.xml
-                            cat result-rest.xml
-                        }
-                    }
+
+        stage('Rest') {
+            agent { label 'flask' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        echo "[INFO] Ejecutando pruebas REST..."
+                        export PYTHONPATH=$WORKSPACE
+                        pytest test/rest/api_test.py --junitxml=result-rest.xml
+                        cat result-rest.xml  # Muestra el XML de resultados de las pruebas REST para depuración
+                    '''
                 }
             }
         }
