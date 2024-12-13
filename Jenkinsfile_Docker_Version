@@ -53,7 +53,7 @@ pipeline {
 
                                 until curl -s http://localhost:5000; do
                                     echo "[INFO] Esperando que Flask se inicie..."
-                                    sleep 5
+                                    sleep 10
                                 done
                                 echo "[OK] Flask está listo"
 

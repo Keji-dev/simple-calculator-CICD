@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'dev', url: 'https://github.com/Keji-dev/unir-helloworld.git'
+                git branch: 'master', url: 'https://github.com/Keji-dev/unir-helloworld.git'
             }
         }
         
@@ -25,7 +25,7 @@ pipeline {
                     }
                 }
 
-                stage('Wiremock Start Up') {
+                stage('Wiremock Docker Container') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
@@ -53,7 +53,7 @@ pipeline {
 
                                 until curl -s http://localhost:5000; do
                                     echo "[INFO] Esperando que Flask se inicie..."
-                                    sleep 5
+                                    sleep 10
                                 done
                                 echo "[OK] Flask está listo"
 
