@@ -81,10 +81,10 @@ pipeline {
     }
 
     post {
-        agent { label 'wiremock' }
         always {
-            echo "[INFO] Limpiando recursos..."
+            agent { label 'wiremock' }
             sh '''
+                echo "[INFO] Limpiando recursos..."
                 docker stop wiremock || true
                 docker rm wiremock || true
                 pkill -f "flask" || true
