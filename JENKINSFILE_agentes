@@ -60,15 +60,6 @@ pipeline {
 
         stage('Tests') {
             parallel {
-                stage('Unit') {
-                    agent { label 'unit' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
-                        }
-                    }
-                }
-                
                 stage('Rest') {
                     agent { label 'flask' }
                     steps {
@@ -81,6 +72,15 @@ pipeline {
                         }
                     }
                 }
+
+                stage('Unit') {
+                    agent { label 'unit' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
+                        }
+                    }
+                }      
             }    
         }
         
