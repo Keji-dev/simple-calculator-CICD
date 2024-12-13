@@ -11,7 +11,7 @@ pipeline {
         }
         
         stage('Services') {
-            stages {
+            parallel {
                 stage('Wiremock Server') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
