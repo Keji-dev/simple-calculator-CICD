@@ -106,7 +106,7 @@ pipeline {
 
     post {
         always {
-            node ('agent1') {
+            node ('flask') {
             sh '''
                 echo "[INFO] Limpiando recursos..."
                 docker stop wiremock || true
