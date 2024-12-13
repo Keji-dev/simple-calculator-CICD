@@ -78,4 +78,15 @@ pipeline {
             }
         }
     }
+
+    post {
+        always {
+            echo "[INFO] Limpiando recursos..."
+            sh '''
+                docker stop wiremock || true
+                docker rm wiremock || true
+                pkill -f "flask" || true
+            '''
+        }
+    }
 }
