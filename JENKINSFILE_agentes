@@ -1,34 +1,34 @@
 pipeline {
-    agent none
-    
+    agent none  // Ningún agente global, cada etapa especificará su propio agente
+
     stages {
         stage('Build') {
-            agent { label 'unit' }
+            agent { label 'unit' }  // Agente de compilación (unit)
             steps {
                 echo 'Esto es una etapa Build de ejemplo'
                 sh 'ls -la'
                 sh 'echo $WORKSPACE'
             }
         }
-        
+
         stage('Services') {
-            stages {
+            parallel {
                 stage('Wiremock Server') {
-                    agent { label 'flask' }
+                    agent { label 'flask' }  // Agente para Wiremock (flask en este caso)
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
                                 docker run -d -p 9090:8080 --name wiremock \
                                 -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
                                 wiremock/wiremock:latest
-
                                 sleep 10
                                 whoami
                                 hostname
                                 echo "[INFO] Conectando al contenedor Wiremock..."
-                                docker ps -a  # Verifica si el contenedor se está ejecutando
-                                curl -s http://localhost:9090  # Verifica que el servicio Wiremock esté accesible
+                                docker ps -a
+                                curl -s http://localhost:9090
                             '''
+                            stash name: 'wiremock_data', includes: '**/test/wiremock/mappings/*'  // Stash para compartir archivos entre agentes
                         }
                     }
                 }
@@ -39,27 +39,19 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
                                 export FLASK_APP=app/api.py
-
-                                # Inicia Flask en el fondo
                                 nohup flask run --host=0.0.0.0 --port=5000 &
-
-                                # Espera hasta que Flask esté completamente disponible
-                                echo "[INFO] Verificando conexión a Flask en el puerto 5000..."
                                 sleep 5
-
-                                # Verifica si Flask responde
                                 curl -s http://localhost:5000 || echo "[ERROR] Flask no responde"
-
                                 until curl -s http://localhost:5000; do
                                     echo "[INFO] Esperando que Flask se inicie..."
                                     sleep 5
                                 done
-
                                 echo "[OK] Flask está listo"
                                 whoami
                                 hostname
-                                netstat -tuln  # Verifica puertos abiertos, asegúrate de que el 5000 esté en la lista
+                                netstat -tuln
                             '''
+                            stash name: 'flask_data', includes: '**/app/api.py'  // Stash para datos de Flask
                         }
                     }
                 }
@@ -72,36 +64,32 @@ pipeline {
                     agent { label 'unit' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                echo "[INFO] Ejecutando pruebas unitarias..."
-                                export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
-                                cat result-unit.xml  # Muestra el XML de resultados de las pruebas unitarias para depuración
-                            '''
+                            unstash 'wiremock_data'  // Recuperamos los datos stashados en etapas previas
+                            echo "[INFO] Ejecutando pruebas unitarias..."
+                            export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
+                            cat result-unit.xml
                         }
                     }
                 }
-                
                 stage('Rest') {
-                    agent { label 'flask' }
+                    agent { label 'flask' }  // Usamos el agente flask para las pruebas REST
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                echo "[INFO] Ejecutando pruebas REST..."
-                                export PYTHONPATH=$WORKSPACE
-                                pytest test/rest/api_test.py --junitxml=result-rest.xml
-                                cat result-rest.xml  # Muestra el XML de resultados de las pruebas REST para depuración
-                            '''
+                            unstash 'flask_data'  // Recuperamos los datos del Flask stashado
+                            echo "[INFO] Ejecutando pruebas REST..."
+                            export PYTHONPATH=$WORKSPACE
+                            pytest test/rest/api_test.py --junitxml=result-rest.xml
+                            cat result-rest.xml
                         }
                     }
                 }
-            }    
+            }
         }
 
-        
         stage('Results') {
             agent { label 'unit' }
             steps {
-                junit 'result*.xml'
+                junit 'result*.xml'  // Analizar resultados de pruebas
             }
         }
     }
@@ -109,12 +97,14 @@ pipeline {
     post {
         always {
             agent { label 'wiremock' }
-            sh '''
+            steps {
                 echo "[INFO] Limpiando recursos..."
-                docker stop wiremock || true
-                docker rm wiremock || true
-                pkill -f "flask" || true
-            '''
+                sh '''
+                    docker stop wiremock || true
+                    docker rm wiremock || true
+                    pkill -f "flask" || true
+                '''
+            }
         }
     }
 }
