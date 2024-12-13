@@ -25,7 +25,7 @@ pipeline {
                     }
                 }
 
-                stage('Wiremock Start Up') {
+                stage('Wiremock Docker Container') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
