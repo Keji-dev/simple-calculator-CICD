@@ -37,6 +37,7 @@ pipeline {
                             sh '''
                                 export FLASK_APP=app/api.py
                                 nohup flask run &
+                                sleep 10
 
                                 whoami
                                 hostname
