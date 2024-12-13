@@ -2,12 +2,6 @@ pipeline {
     agent any
     
     stages {
-        stage('Clone Repository') {
-            steps {
-                git branch: 'master', url: 'https://github.com/Keji-dev/unir-helloworld.git'
-            }
-        }
-        
         stage('Build') {
             steps {
                 echo 'Esto es una etapa Build de ejemplo'
