@@ -22,7 +22,12 @@ pipeline {
                                 -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
                                 wiremock/wiremock:latest
 
-                                sleep 10
+                                until curl -s http://localhost:9090/__admin; do
+                                    echo "[INFO] Esperando que WireMock se inicie..."
+                                    sleep 5
+                                done
+
+                                echo "[OK] WireMock está listo"
                                 whoami
                                 hostname
                             '''
@@ -37,7 +42,12 @@ pipeline {
                             sh '''
                                 export FLASK_APP=app/api.py
                                 nohup flask run --host=0.0.0.0 --port=5000 &
-                                sleep 10
+                                
+                                until curl -s http://localhost:5000; do
+                                    echo "[INFO] Esperando que Flask se inicie..."
+                                    sleep 10
+                                done
+                                echo "[OK] Flask está listo"
 
                                 whoami
                                 hostname
