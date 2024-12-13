@@ -7,7 +7,7 @@ pipeline {
             steps {
                 echo 'Esto es una etapa Build de ejemplo'
                 sh '''
-                    ls -la'
+                    ls -la
                     echo $WORKSPACE
                     whoami
                     hostname
@@ -75,7 +75,7 @@ pipeline {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
-                                export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
+                                export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
 
                                 whoami
                                 hostname
@@ -109,7 +109,7 @@ pipeline {
             node ('agent1') {
             sh '''
                 echo "[INFO] Limpiando recursos..."
-                docker stop wiremock || trues
+                docker stop wiremock || true
                 docker rm wiremock || true
                 pkill -f "flask" || true
 
