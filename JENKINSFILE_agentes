@@ -15,31 +15,28 @@ pipeline {
             }
         }
         
-        stage('Services') {
-            stages {
-                stage('Wiremock Server') {
-                    agent { label 'flask' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                docker run -d -p 9090:8080 --name wiremock \
-                                -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
-                                wiremock/wiremock:latest
+        stage('Wiremock Server') {
+            agent { label 'flask' }
+                steps {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        sh '''
+                            docker run -d -p 9090:8080 --name wiremock \
+                            -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
+                            wiremock/wiremock:latest
 
-                                echo "[INFO] Esperando que WireMock se inicie..."
-                                    while ! curl -s http://localhost:9090/__admin; do
-                                    sleep 2
-                                done
+                            echo "[INFO] Esperando que WireMock se inicie..."
+                                while ! curl -s http://localhost:9090/__admin; do
+                                sleep 2
+                            done
 
-                                echo "[OK] WireMock está listo"
-                                whoami
-                                hostname
-                            '''
-                        }    
-                    }
+                            echo "[OK] WireMock está listo"
+                            whoami
+                            hostname
+                        '''
+                    }    
                 }
             }
-        }
+
 
         stage('Tests') {
             parallel {
