@@ -22,6 +22,7 @@ pipeline {
                                 -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
                                 wiremock/wiremock:latest
 
+                                sleep 10
                                 whoami
                                 hostname
                             '''
