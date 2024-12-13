@@ -74,7 +74,7 @@ pipeline {
                                 done
 
                                 echo "[OK] Flask está listo"
-                                
+
                                 export PYTHONPATH=$WORKSPACE
                                 pytest test/rest/api_test.py --junitxml=result-rest.xml
                             '''
@@ -103,13 +103,14 @@ pipeline {
 
     post {
         always {
-            agent { label 'wiremock' }
+            node ('agent1') {
             sh '''
                 echo "[INFO] Limpiando recursos..."
                 docker stop wiremock || trues
                 docker rm wiremock || true
                 pkill -f "flask" || true
             '''
+            }    
         }
     }
 }
