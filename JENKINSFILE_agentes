@@ -41,11 +41,11 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
                                 export FLASK_APP=app/api.py
-                                nohup flask run --host=0.0.0.0 --port=5000 &
-                                
-                                until curl -s http://localhost:5000; do
-                                    echo "[INFO] Esperando que Flask se inicie..."
-                                    sleep 10
+                                flask run --host=0.0.0.0 --port=5000 &
+
+                                echo "[INFO] Esperando que Flask se inicie..."
+                                while ! curl -s http://localhost:5000; do
+                                    sleep 2
                                 done
                                 echo "[OK] Flask está listo"
 
