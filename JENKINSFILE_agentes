@@ -14,7 +14,7 @@ pipeline {
         stage('Services') {
             stages {
                 stage('Wiremock Server') {
-                    agent { label 'wiremock' }
+                    agent { label 'flask' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
