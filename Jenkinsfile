@@ -42,7 +42,7 @@ pipeline {
                 stage('Unit') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
+                            sh 'export PYTHONPATH=$(pwd) && pytest -v --junitxml=result-unit.xml test/unit/'
                         }
                     }
                 }
@@ -52,7 +52,7 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
                                 export PYTHONPATH=$WORKSPACE
-                                pytest test/rest/api_test.py --junitxml=result-rest.xml
+                                pytest -v test/rest/api_test.py --junitxml=result-rest.xml
                             '''
                         }
                     }
