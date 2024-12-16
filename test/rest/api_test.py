@@ -1,8 +1,7 @@
 import http.client
 import os
-import unittest
+import unittest 
 from urllib.request import urlopen
-
 import pytest
 
 BASE_URL = "http://localhost:5000"
@@ -52,10 +51,10 @@ class TestApi(unittest.TestCase):
             response.status, http.client.OK, f"Error en la petición API a {url}"
         )
         self.assertEqual(
-            response.read().decode(), "3", "ERROR EN LA DIVISIÓN"
+            float(response.read().decode()), 3.0, "ERROR EN LA DIVISIÓN"
         )
 
-    def test_api_divide_by_zero(self):
+    def test_api_divide_by_zero_error(self):
         url = f"{BASE_URL}/calc/divide/10/0"
         try:
             response = urlopen(url, timeout=DEFAULT_TIMEOUT)
