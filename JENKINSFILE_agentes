@@ -1,0 +1,137 @@
+pipeline {
+    agent none
+    
+    stages {
+        stage('Build') {
+            agent { label 'unit' }
+            steps {
+                echo 'Esto es una etapa Build de ejemplo'
+                sh '''
+                    ls -la
+                    echo $WORKSPACE
+                    whoami
+                    hostname
+                '''
+            }
+        }
+        
+        stage('Wiremock Server') {
+            agent { label 'flask' }
+                steps {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        sh '''
+                            docker run -d -p 9090:8080 --name wiremock \
+                            -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
+                            wiremock/wiremock:latest
+
+                            TIMEOUT=300
+                            TIME_ELAPSED=0
+
+                            until curl -s http://localhost:9090/__admin; do
+                                if [ $TIME_ELAPSED -ge $TIMEOUT ]; then
+                                    echo "[ERROR] Timeout alcanzado después de $TIMEOUT segundos, deteniendo el pipeline..."
+                                    exit 1
+                                fi
+
+                                echo "[INFO] Esperando que WireMock se inicie..."
+                                sleep 5
+                                TIME_ELAPSED=$((TIME_ELAPSED + 5))
+                            done
+
+                            echo "[OK] WireMock está listo"
+                            whoami
+                            hostname
+                        '''
+                    }    
+                }
+            }
+
+
+        stage('Tests') {
+            parallel {
+                stage('Rest') {
+                    agent { label 'flask' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                export FLASK_APP=app/api.py
+                                flask run --host=0.0.0.0 --port=5000 &
+
+                                TIMEOUT=300
+                                TIME_ELAPSED=0
+
+                                until curl -s http://localhost:5000; do
+                                    if [ $TIME_ELAPSED -ge $TIMEOUT ]; then
+                                        echo "[ERROR] Timeout alcanzado después de $TIMEOUT segundos, deteniendo el pipeline..."
+                                        exit 1
+                                    fi
+
+                                    echo "[INFO] Esperando que Flask se inicie..."
+                                    sleep 5
+                                    TIME_ELAPSED=$((TIME_ELAPSED + 5))
+                                done
+
+                                echo "[OK] Flask está listo"
+
+                                export PYTHONPATH=$WORKSPACE
+                                pytest test/rest/api_test.py --junitxml=result-rest.xml
+
+                                whoami
+                                hostname
+                            '''
+
+                            stash name: 'rest-test-results', includes: 'result-rest.xml'
+                        }
+                    }
+                }
+
+                stage('Unit') {
+                    agent { label 'unit' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
+
+                                whoami
+                                hostname
+                            '''
+
+                            stash name: 'unit-test-results', includes: 'result-unit.xml'
+                        }
+                    }
+                }      
+            }    
+        }
+        
+        stage('Results') {
+            agent { label 'unit' }
+            steps {
+                unstash 'rest-test-results'
+                unstash 'unit-test-results'
+
+                junit 'result*.xml'
+
+                sh '''
+                    whoami
+                    hostname
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            node ('flask') {
+            sh '''
+                echo "[INFO] Limpiando recursos..."
+                docker stop wiremock || true
+                docker rm wiremock || true
+                pkill -f "flask" || true
+
+                whoami
+                hostname
+            '''
+            }    
+        }
+    }
+}
