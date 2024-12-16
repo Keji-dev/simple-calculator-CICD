@@ -25,6 +25,13 @@ class TestCalculate(unittest.TestCase):
         self.assertEqual(1, self.calc.divide(2, 2))
         self.assertEqual(1.5, self.calc.divide(3, 2))
         self.assertRaises(TypeError, self.calc.divide, "2", 2)
+        with self.assertRaises(ZeroDivisionError):
+            self.calc.divide(10, 0)
+
+    def test_divide_returns_406_for_zero_division(self):
+        response = requests.get(f"{self.BASE_URL}/divide/10/0")
+        self.assertEqual(response.status_code, 406, "Expected HTTP 406 for division by zero")
+        self.assertEqual(response.text, "Division by zero is not allowed", "Unexpected error message")
   
     def test_add_method_fails_with_nan_parameter(self):
         self.assertRaises(TypeError, self.calc.add, "2", 2)
