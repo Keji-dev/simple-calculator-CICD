@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Get Code') {
             steps {
-                git 'https://github.com/Keji-dev/unir-helloworld.git'
+                git url: 'https://github.com/Keji-dev/unir-helloworld.git', branch: 'feature_fix_coverage'
             }
         }
 
