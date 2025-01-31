@@ -2,12 +2,6 @@ pipeline {
     agent any
     
     stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
         stage('Get Code') {
             steps {
                 git 'https://github.com/Keji-dev/unir-helloworld.git'
@@ -18,7 +12,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh 'export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/'
-                    junit 'result*.xml'
+                    junit 'result-unit.xml'
                 }
             }
         }
@@ -71,7 +65,7 @@ pipeline {
                         export PYTHONPATH=$WORKSPACE
                         pytest test/rest/api_test.py --junitxml=result-rest.xml
                     '''
-                    junit 'result*.xml'
+                    junit 'result-rest.xml'
                 }
             }             
         }

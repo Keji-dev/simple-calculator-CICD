@@ -1,119 +1,194 @@
 pipeline {
     agent none
-    
+
     stages {
-        stage('Build') {
-            agent { label 'unit' }
+        stage('Get Code') {
+            agent {label 'unit'}
             steps {
-                echo 'Esto es una etapa Build de ejemplo'
-                sh '''
-                    ls -la
-                    echo $WORKSPACE
-                    whoami
-                    hostname
-                '''
-            }
-        }
-        
-        stage('Wiremock Server') {
-            agent { label 'flask' }
-                steps {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        sh '''
-                            docker run -d -p 9090:8080 --name wiremock \
-                            -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
-                            wiremock/wiremock:latest
-
-                            echo "[INFO] Esperando que WireMock se inicie..."
-                                while ! curl -s http://localhost:9090/__admin; do
-                                sleep 2
-                            done
-
-                            echo "[OK] WireMock está listo"
-                            whoami
-                            hostname
-                        '''
-                    }    
+                    git 'https://github.com/Keji-dev/unir-helloworld.git'
+                    stash name: 'code', includes: '**/*'
                 }
             }
-
 
         stage('Tests') {
             parallel {
-                stage('Rest') {
-                    agent { label 'flask' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            sh '''
-                                export FLASK_APP=app/api.py
-                                flask run --host=0.0.0.0 --port=5000 &
-
-                                echo "[INFO] Esperando que Flask se inicie..."
-                                    while ! curl -s http://localhost:5000; do
-                                    sleep 2
-                                done
-
-                                echo "[OK] Flask está listo"
-
-                                export PYTHONPATH=$WORKSPACE
-                                pytest test/rest/api_test.py --junitxml=result-rest.xml
-
-                                whoami
-                                hostname
-                            '''
-
-                            stash name: 'rest-test-results', includes: 'result-rest.xml'
-                        }
-                    }
-                }
-
                 stage('Unit') {
                     agent { label 'unit' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh '''
                                 export PYTHONPATH=$(pwd) && pytest --junitxml=result-unit.xml test/unit/
-
-                                whoami
-                                hostname
                             '''
-
                             stash name: 'unit-test-results', includes: 'result-unit.xml'
+                            info()
                         }
                     }
-                }      
-            }    
+                }
+
+                stage('Rest') {
+                    agent { label 'flask' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'code'
+                            // Starting WireMock 
+                            startWireMock()
+                            // Starting Flask 
+                            startFlask()
+                            sh '''
+                                export PYTHONPATH=$WORKSPACE
+                                pytest test/rest/api_test.py --junitxml=result-rest.xml
+                            '''
+                            stash name: 'rest-test-results', includes: 'result-rest.xml'
+                            info()
+                        }
+                    }
+                }
+            }
         }
-        
-        stage('Results') {
-            agent { label 'unit' }
+
+        stage('Code Coverage') {
+            agent {label 'unit'}
             steps {
-                unstash 'rest-test-results'
-                unstash 'unit-test-results'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    info()
+                    sh '''
+                        python3 -m coverage run --branch --source=app --omit=app/__init.py,app/api.py -m pytest test/unit/
+                        python3 -m coverage xml
+                    '''
+                    cobertura coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '100,80,90', lineCoverageTargets: '100,85,95', failUnhealthy: false, failUnstable: true
+                }
+            }
+        }
 
-                junit 'result*.xml'
+        stage('Quality Checks') {
+            parallel {
+                stage('Security Analysis (Bandit)') {
+                    agent { label 'unit' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                bandit -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}" || exit 0
+                            '''
+                            info()
+                            recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]]
+                        }
+                    }
+                }
 
-                sh '''
-                    whoami
-                    hostname
-                '''
+                stage('Static Analysis (Flake8)') {
+                    agent { label 'flask' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'code'
+                            sh '''
+                                python3 -m flake8 --exit-zero --format=pylint app > flake8.out
+                            '''
+                            info()
+                            recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', unstable: false]]
+                        }
+                    }
+                }
+
+                stage('Performance') {
+                    agent {label 'flask'}
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'code'
+                            startFlask()
+                            sh '''
+                                export PATH=$PATH:/opt/jmeter/bin
+                                jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl
+                            '''
+                            info()
+                            perfReport sourceDataFiles: 'flask.jtl'
+                        }
+                    }
+                }
+
+                stage('Results') {
+                    agent {label 'unit'}
+                    steps {
+                        unstash 'rest-test-results'
+                        unstash 'unit-test-results'
+                        junit 'result*.xml'
+                        info()
+                    }
+                }
             }
         }
     }
-
     post {
         always {
-            node ('flask') {
-            sh '''
-                echo "[INFO] Limpiando recursos..."
-                docker stop wiremock || true
-                docker rm wiremock || true
-                pkill -f "flask" || true
+            script {
+                node ('flask') {
+                    sh '''
+                        echo "[INFO] Limpiando recursos..."
+                        docker stop wiremock || true
+                        docker rm wiremock || true
+                        pkill -f "flask" || true
+                    '''
+                    info()
+                    cleanWs()
+                }
 
-                whoami
-                hostname
-            '''
-            }    
+                node ('unit') {
+                    info()
+                    cleanWs()
+                }
+            }
         }
     }
+}
+
+def startFlask() {
+    sh '''
+        export FLASK_APP=app/api.py
+        nohup flask run > flask.log 2>&1 &
+
+        TIMEOUT=300
+        TIME_ELAPSED=0
+
+        until curl -s http://localhost:5000; do
+            if [ $TIME_ELAPSED -ge $TIMEOUT ]; then
+                echo "[ERROR] Unable to start Flask. Timeout reached after $TIMEOUT seconds, stopping pipeline..."
+                exit 1
+            fi
+            echo "[INFO] Waiting for Flask to be initiated..."
+            sleep 5
+            TIME_ELAPSED=$((TIME_ELAPSED + 5))
+        done
+
+        echo "[OK] Flask started"
+    '''
+}
+
+def startWireMock() {
+    sh '''
+        docker run -d -p 9090:8080 --name wiremock \
+        -v $(pwd)/test/wiremock/mappings:/home/wiremock/mappings \
+        wiremock/wiremock:latest
+
+        TIMEOUT=300
+        TIME_ELAPSED=0
+
+        until curl -s http://localhost:9090/__admin; do
+            if [ $TIME_ELAPSED -ge $TIMEOUT ]; then
+                echo "[ERROR] Unable to start WireMock. Timeout reached after $TIMEOUT seconds, stopping pipeline..."
+                exit 1
+            fi
+            echo "[INFO] Waiting for WireMock to be initiated..."
+            sleep 5
+            TIME_ELAPSED=$((TIME_ELAPSED + 5))
+        done
+
+        echo "[OK] WireMock started"
+    '''
+}
+
+def info(){
+    sh '''
+        whoami
+        hostname
+        echo $WORKSPACE
+    '''
 }
