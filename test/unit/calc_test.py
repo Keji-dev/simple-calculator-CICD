@@ -62,5 +62,28 @@ class TestCalculate(unittest.TestCase):
         self.assertEqual(0, self.calc.substract(0, 0))
         self.assertRaises(TypeError, self.calc.substract, "0", 0)
         
+    def test_divide_method_fails_with_zero_division(self):
+        self.assertRaises(TypeError, self.calc.divide, 1, 0)
+
+    def test_add_method_with_large_numbers(self):
+        self.assertEqual(1e10 + 1e10, self.calc.add(1e10, 1e10))
+        self.assertEqual(1e-10 + 1e-10, self.calc.add(1e-10, 1e-10))
+
+    def test_substract_method_with_large_numbers(self):
+        self.assertEqual(1e10 - 1e10, self.calc.substract(1e10, 1e10))
+        self.assertEqual(1e-10 - 1e-10, self.calc.substract(1e-10, 1e-10))
+
+    def test_substract_method_with_floats(self):
+        self.assertEqual(3.5 - 1.2, self.calc.substract(3.5, 1.2))
+
+    def test_multiply_method_with_large_numbers(self):
+        self.assertEqual(1e10 * 1e10, self.calc.multiply(1e10, 1e10))
+
+    def power(self, x, y):
+        self.check_types(x, y)
+        if x == 0 and y < 0:
+            raise ValueError("0 cannot be raised to a negative power")
+        return x ** y
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
