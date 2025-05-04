@@ -1,5 +1,67 @@
-# Repo para EU - DevOps&Cloud - UNIR
+# 🧮 Calculadora Simple CI/CD
 
-Este repositorio incluye un proyecto sencillo para demostrar los conceptos de pruebas unitarias, pruebas de servicio, uso de Wiremock y pruebas de rendimiento
-El objetivo es que el alumno entienda estos conceptos, por lo que el código y la estructura del proyecto son especialmente sencillos.
-Este proyecto sirve también como fuente de código para el pipeline de Jenkins.
+Este proyecto es una calculadora web desarrollada en Python (Flask), con integración y despliegue continuo (CI/CD) mediante Jenkins. La aplicación está contenerizada con Docker y preparada para ser desplegada en un clúster Kubernetes sobre AWS. Incluye pruebas automatizadas, análisis de calidad y rendimiento.
+
+---
+
+## 🚀 Tecnologías Utilizadas
+
+- Python 3
+- Flask
+- Jenkins
+- Docker
+- Kubernetes (AWS EKS)
+- Terraform
+- JMeter
+- SonarQube
+- OWASP ZAP
+- Bandit
+- Flake8
+- Coverage.py
+- WireMock
+
+---
+
+## ⚙️ Jenkins CI/CD Pipeline
+
+### Flujo Automatizado:
+
+1. **Obtener el código**
+   - Se clona el repositorio desde GitHub y se guarda con `stash`.
+
+2. **Pruebas en paralelo**
+   - `Unit`: Ejecuta `pytest` para tests unitarios (`test/unit/`).
+   - `REST`: 
+     - Inicia servidores de prueba (Flask y WireMock).
+     - Ejecuta `pytest` sobre la API REST (`test/rest/`).
+
+3. **Cobertura de código**
+   - Calculada con `coverage.py`.
+   - Evaluada con `Cobertura` plugin.
+
+4. **Controles de calidad**
+   - `Bandit`: Análisis de seguridad.
+   - `Flake8`: Análisis estático.
+   - `JMeter`: Pruebas de rendimiento (`test/jmeter/flask.jmx`).
+   - `SonarQube` y `OWASP ZAP` pueden integrarse para análisis de calidad adicional (si configurado en el entorno).
+
+5. **Publicación de resultados**
+   - Pruebas y cobertura se reportan en Jenkins.
+
+6. **Limpieza de entorno**
+   - Se detienen contenedores y se limpia el workspace automáticamente.
+
+---
+
+## 📦 Estructura del Proyecto
+
+├── app/
+│ ├── api.py
+│ └── init.py
+├── test/
+│ ├── unit/
+│ ├── rest/
+│ └── jmeter/
+├── Dockerfile
+├── Jenkinsfile
+└── requirements.txt
