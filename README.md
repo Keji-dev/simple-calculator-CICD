@@ -52,16 +52,3 @@ Este proyecto es una calculadora web desarrollada en Python (Flask), con integra
    - Se detienen contenedores y se limpia el workspace automáticamente.
 
 ---
-
-## 📦 Estructura del Proyecto
-
-├── app/
-│ ├── api.py
-│ └── init.py
-├── test/
-│ ├── unit/
-│ ├── rest/
-│ └── jmeter/
-├── Dockerfile
-├── Jenkinsfile
-└── requirements.txt
